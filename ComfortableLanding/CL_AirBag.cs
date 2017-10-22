@@ -1,17 +1,10 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using UnityEngine;
+﻿using UnityEngine;
 using KSP.Localization;
 
 public class CL_AirBag : PartModule
 {
-    [KSPField]
     ModuleAnimateGeneric InflateAnim;
 
-    [KSPField]
     AudioClip inflateSound;
     AudioSource audioSource;
     AudioClip deflateSound;
@@ -21,13 +14,12 @@ public class CL_AirBag : PartModule
     public double inflateAltitude = 50.0;
     public float crashToleranceAfterInflated = 45.0f;
     public string DeflateTransformName = "DeflateTransform";
-    public float deflateScaleX = 1.0f;
-    public float deflateScaleY = 1.0f;
-    public float deflateScaleZ = 1.0f;
+    public Vector3 deflateScale = new Vector3(1.0f, 1.0f, 1.0f);
     public string InflateTransformName = "InflateTransform";
-    public float inflateScaleX = 0.1f;
-    public float inflateScaleY = 0.1f;
-    public float inflateScaleZ = 0.1f;
+    public Vector3 inflateScale = new Vector3(0.1f, 0.1f, 0.1f);
+    public bool damageAfterSplashed = false;
+    public float buoyancyAfterInflated = 1.2f;
+    public Vector3 COBAfterInflated = new Vector3(0.0f, 0.0f, 0.0f);
 
     public string inflateSoundPath = "ComfortableLanding/Sounds/Inflate_A";
     public string deflateSoundPath = "ComfortableLanding/Sounds/Touchdown";
@@ -37,12 +29,30 @@ public class CL_AirBag : PartModule
 
     private Transform DeflateTransform = null;
     private Transform InflateTransform = null;
+    private float originalCrashTolerance = 0.0f;
+    private float originalBuoyancy = 1.0f;
+    private Vector3 originalCOB = new Vector3(0.0f, 0.0f, 0.0f);
+
+    //public string animName = null;
+    //public int animLayer = 0;
 
     public override void OnStart(StartState state)
     {
         InflateAnim = part.Modules["ModuleAnimateGeneric"] as ModuleAnimateGeneric;
         if (InflateAnim == null)
-            Debug.Log("<color=#FF8C00ff>Comfortable Landing:</color>Animation Missing!");
+            Debug.Log("<color=#FF8C00ff>[Comfortable Landing]</color>Animation Missing!");
+        /*
+        foreach (ModuleAnimateGeneric anim in part.Modules)
+        {
+            if (anim.animationName == animName && anim.layer == animLayer)
+            {
+                InflateAnim = anim;
+                break;
+            }
+        }
+        */
+        if (InflateAnim == null)
+            Debug.Log("<color=#FF8C00ff>[Comfortable Landing]</color>Animation Missing!");
 
         DeflateTransform = base.part.FindModelTransform(DeflateTransformName);
         InflateTransform = base.part.FindModelTransform(InflateTransformName);
@@ -88,6 +98,11 @@ public class CL_AirBag : PartModule
             volume2 = 1.0f;
         }
         audioSource.volume = volume2;
+
+        this.part.buoyancyUseSine = false;
+        originalCrashTolerance = this.part.crashTolerance;
+        originalBuoyancy = this.part.buoyancy;
+        originalCOB = this.part.CenterOfBuoyancy;
     }
 
     public void Inflate()
@@ -96,16 +111,29 @@ public class CL_AirBag : PartModule
         audioSource.PlayOneShot(inflateSound);
         InflateAnim.allowManualControl = true;
         InflateAnim.Toggle();
-        InflateAnim.allowManualControl = false;
-        Debug.Log("<color=#FF8C00ff>Comfortable Landing:</color>Inflate!");
+        //InflateAnim.allowManualControl = false;
+        this.part.crashTolerance = crashToleranceAfterInflated;//This is a really airbag!
+        this.part.CenterOfBuoyancy = COBAfterInflated;
+        this.part.buoyancy = buoyancyAfterInflated;
+        Debug.Log("<color=#FF8C00ff>[Comfortable Landing]</color>Inflate!");
+
     }
 
     public void Deflate()
     {
         ScreenMessages.PostScreenMessage("<color=#00ff00ff>[ComfortableLanding]Touchdown!</color>", 3f, ScreenMessageStyle.UPPER_CENTER);
         audioSource2.PlayOneShot(deflateSound);
-        InflateTransform.localScale = new Vector3(inflateScaleX, inflateScaleY, inflateScaleZ);
-        DeflateTransform.localScale = new Vector3(deflateScaleX, deflateScaleY, deflateScaleZ);
-        Debug.Log("<color=#FF8C00ff>Comfortable Landing:</color>Touchdown!");
+        DeflateTransform.localScale = deflateScale;
+        InflateTransform.localScale = inflateScale;
+        this.part.crashTolerance = originalCrashTolerance;//Not a airbag any more.
+        this.part.buoyancy = originalBuoyancy;
+        this.part.CenterOfBuoyancy = originalCOB;
+        Debug.Log("<color=#FF8C00ff>[Comfortable Landing]</color>Touchdown!");
+    }
+
+    public void Touchdown()
+    {
+        ScreenMessages.PostScreenMessage("<color=#00ff00ff>[ComfortableLanding]Touchdown!</color>", 3f, ScreenMessageStyle.UPPER_CENTER);
+        Debug.Log("<color=#FF8C00ff>[Comfortable Landing]</color>Touchdown!");
     }
 }

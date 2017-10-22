@@ -1,24 +1,18 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using UnityEngine;
+﻿using UnityEngine;
 using KSP.Localization;
 
 public class CL_ControlTool : PartModule
 {
+    CL_LandingBurn burn;
+    CL_Buoy buoy;
+    CL_AirBag airbag;
+
     [KSPField]
     public bool IsActivate = false;
-    private float originalCrashTolerance = 0.0f;
     private bool alreadyFired = false;
     private bool alreadyInflated = false;
     private bool alreadyInflatedAirBag = false;
     private bool alreadyDeflatedAirBag = false;
-
-    CL_LandingBurn burn;
-    CL_Buoy buoy;
-    CL_AirBag airbag;
 
     [KSPEvent(name = "Activate", guiName = "Activate Pre-Landing Mode", active = true, guiActive = true)]
     public void Activate()
@@ -37,8 +31,8 @@ public class CL_ControlTool : PartModule
        
     }
 
-    [KSPAction("Toggle", KSPActionGroup.None, guiName = "Toggle Pre-Landing Mode")]
-    public void ActionActivate(KSPActionParam param)
+    [KSPAction("Toggle Pre-Landing Mode", KSPActionGroup.None)]
+    public void ActionToggle(KSPActionParam param)
     {
         if (IsActivate == false)
         {
@@ -50,24 +44,36 @@ public class CL_ControlTool : PartModule
         }
     }
 
+    [KSPAction("Activate Pre-Landing Mode", KSPActionGroup.None)]
+    public void ActionActivate(KSPActionParam param)
+    {
+            Activate();
+    }
+
+    [KSPAction("Deactivate Pre-Landing Mode", KSPActionGroup.None)]
+    public void ActionDeactivate(KSPActionParam param)
+    {
+            Deactivate();
+    }
+
     public override void OnStart(PartModule.StartState state)
     {
         burn = part.Modules["CL_LandingBurn"] as CL_LandingBurn;
         if (burn == null)
         {
-            Debug.Log("<color=#FF8C00ff>Comfortable Landing:</color>Not detected");
+            Debug.Log("<color=#FF8C00ff>[Comfortable Landing]</color>Not detected CL_LandingBurn");
         }
 
         buoy = part.Modules["CL_Buoy"] as CL_Buoy;
         if (buoy == null)
         {
-            Debug.Log("<color=#FF8C00ff>Comfortable Landing:</color>Not detected CL_Buoy");
+            Debug.Log("<color=#FF8C00ff>[Comfortable Landing]</color>Not detected CL_Buoy");
         }
-        airbag=part.Modules["CL_airbag"] as CL_AirBag;
 
+        airbag=part.Modules["CL_AirBag"] as CL_AirBag;
         if(airbag==null)
         {
-            Debug.Log("<color=#FF8C00ff>Comfortable Landing:</color>Not detected CL_AirBagg");
+            Debug.Log("<color=#FF8C00ff>[Comfortable Landing]</color>Not detected CL_AirBag");
         }
 
         if (burn == null && buoy == null && airbag == null)
@@ -75,10 +81,16 @@ public class CL_ControlTool : PartModule
             Events["Deactivate"].guiActive = false;
             Events["Activate"].guiActive = false;
             IsActivate = false;
-            Debug.Log("<color=#FF8C00ff>Comfortable Landing:</color>Not detected any CL Module.");
+            Debug.Log("<color=#FF8C00ff>[Comfortable Landing]</color>Not detected any CL Module.");
         }
 
-        originalCrashTolerance = this.part.crashTolerance;
+        ///* Not yet resolved
+        if (buoy != null && airbag != null)//They are repetitive.
+        {
+            airbag = null;//So it will not activate in FixedUpdate.
+            Debug.Log("<color=#FF8C00ff>[Comfortable Landing]</color>Detected CL_Buoy and CL_ Airbag, only activate CL_Buoy.");
+        }
+        //*/
     }
     
     public void FixedUpdate()
@@ -105,33 +117,38 @@ public class CL_ControlTool : PartModule
                     if (vessel.Splashed)
                     {
                         buoy.Inflate();
-                        this.part.buoyancy = buoy.buoyancyAfterInflated;//this is a real buoy!
                         alreadyInflated = true;
                     }
                 }
             }
-            //Inflate Airbag
+            //Airbag
             if (airbag != null)
             {
+                //Inflate Airbag
                 if (alreadyInflatedAirBag == false)
                 {
                     if (vessel.radarAltitude <= airbag.inflateAltitude)
                     {
                         airbag.Inflate();
-                        this.part.crashTolerance = airbag.crashToleranceAfterInflated;
                         alreadyInflatedAirBag = true;
                     }
                 }
-            }
-            //Deflate Airbag
-            if (airbag != null)
-            {
-                if(alreadyInflatedAirBag==true && alreadyDeflatedAirBag == false)
+                //Deflate Airbag
+                if (alreadyInflatedAirBag == true && alreadyDeflatedAirBag == false)
                 {
                     if (vessel.Landed)
                     {
                         airbag.Deflate();
-                        this.part.crashTolerance = originalCrashTolerance;
+                        alreadyDeflatedAirBag = true;
+                    }
+                    else if (vessel.Splashed && airbag.damageAfterSplashed == true)
+                    {
+                        airbag.Deflate();
+                        alreadyDeflatedAirBag = true;
+                    }
+                    else if (vessel.Splashed && airbag.damageAfterSplashed == false)
+                    {
+                        airbag.Touchdown();
                         alreadyDeflatedAirBag = true;
                     }
                 }
@@ -142,7 +159,7 @@ public class CL_ControlTool : PartModule
                 Events["Deactivate"].guiActive = false;
                 Events["Activate"].guiActive = false;
                 IsActivate = false;
-                Debug.Log("<color=#FF8C00ff>Comfortable Landing:</color>The vessel has landed or splashed, deactivate pre-landing mode.");
+                Debug.Log("<color=#FF8C00ff>[Comfortable Landing]</color>The vessel has landed or splashed, deactivate pre-landing mode.");
             }
         }
     }
