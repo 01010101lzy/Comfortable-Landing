@@ -1,31 +1,30 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using UnityEngine;
+﻿using UnityEngine;
 using KSP.Localization;
 
 public class CL_Buoy : PartModule
 {
-    [KSPField]
     ModuleAnimateGeneric InflateAnim;
 
-    [KSPField]
     AudioClip playSound;
     AudioSource audioSource;
 
     [KSPField]
     public float buoyancyAfterInflated = 1.2f;
+    public Vector3 COBAfterInflated = new Vector3(0.0f, 0.0f, 0.0f);
+    public Vector3 COMAfterInflated = new Vector3(0.0f, 0.0f, 0.0f);
+    public bool changeCOM = false;
 
     public string playSoundPath = "ComfortableLanding/Sounds/Inflate_B";
     public float volume = 1.0f;
 
+    //public string animName = null;
+    //public int animLayer = 0;
+
     public override void OnStart(StartState state)
     {
-        InflateAnim = part.Modules["ModuleAnimateGeneric"] as ModuleAnimateGeneric;
+        InflateAnim=part.Modules["ModuleAnimateGeneric"] as ModuleAnimateGeneric;
         if (InflateAnim == null)
-            Debug.Log("<color=#FF8C00ff>Comfortable Landing:</color>Animation Missing!");
+            Debug.Log("<color=#FF8C00ff>[Comfortable Landing]</color>Animation Missing!");
 
         audioSource = gameObject.AddComponent<AudioSource>();
         audioSource.bypassListenerEffects = true;
@@ -54,7 +53,13 @@ public class CL_Buoy : PartModule
         audioSource.PlayOneShot(playSound);
         InflateAnim.allowManualControl = true;
         InflateAnim.Toggle();
-        InflateAnim.allowManualControl = false;
-        Debug.Log("<color=#FF8C00ff>Comfortable Landing:</color>Inflate!");
+        //InflateAnim.allowManualControl = false;
+        this.part.buoyancy = buoyancyAfterInflated;//This is a really buoy!
+        this.part.CenterOfBuoyancy = COBAfterInflated;
+        if (changeCOM == true)
+        {
+            this.part.CoMOffset = COMAfterInflated;
+        }
+        Debug.Log("<color=#FF8C00ff>[Comfortable Landing]</color>Inflate!");
     }
 }
