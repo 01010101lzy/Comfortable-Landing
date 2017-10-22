@@ -23,7 +23,7 @@ public class CL_Buoy : PartModule
 
     public override void OnStart(StartState state)
     {
-        InflateAnim=part.Modules["ModuleAnimateGeneric"] as ModuleAnimateGeneric;
+        InflateAnim = part.Modules["ModuleAnimateGeneric"] as ModuleAnimateGeneric;
         if (InflateAnim == null)
             Debug.Log("<color=#FF8C00ff>Comfortable Landing:</color>Animation Missing!");
 
